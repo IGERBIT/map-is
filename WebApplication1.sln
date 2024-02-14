@@ -1,0 +1,28 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebApplication1", "WebApplication1\WebApplication1.csproj", "{AC68B302-7AC2-4A21-9746-0DDCD0C93806}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "client", "client\client.csproj", "{62883949-859F-49FB-89BD-12A5E02E0081}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MapShared", "MapShared\MapShared.csproj", "{998EE2A5-84C9-4E34-A4C9-8EFD75D5F220}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{AC68B302-7AC2-4A21-9746-0DDCD0C93806}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AC68B302-7AC2-4A21-9746-0DDCD0C93806}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AC68B302-7AC2-4A21-9746-0DDCD0C93806}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AC68B302-7AC2-4A21-9746-0DDCD0C93806}.Release|Any CPU.Build.0 = Release|Any CPU
+		{62883949-859F-49FB-89BD-12A5E02E0081}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{62883949-859F-49FB-89BD-12A5E02E0081}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{62883949-859F-49FB-89BD-12A5E02E0081}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{62883949-859F-49FB-89BD-12A5E02E0081}.Release|Any CPU.Build.0 = Release|Any CPU
+		{998EE2A5-84C9-4E34-A4C9-8EFD75D5F220}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{998EE2A5-84C9-4E34-A4C9-8EFD75D5F220}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{998EE2A5-84C9-4E34-A4C9-8EFD75D5F220}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{998EE2A5-84C9-4E34-A4C9-8EFD75D5F220}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
