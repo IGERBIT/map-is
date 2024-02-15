@@ -173,7 +173,7 @@ public class LoginWindow : ImGuiWindow
         {
             var token = result.ValueOrThrow();
             
-            Service<NetService>().SetToken(token.Token);
+            Service<NetService>().SetToken(token);
             
             Windows.Open<OrganizationControlView>();
             IsOpen = false;

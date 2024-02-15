@@ -62,7 +62,7 @@ public class NetService
         }
     }
 
-    public static async Task<Result<T, Exception>> ResultTo<T>(Result<HttpResponseMessage, Exception> result)
+    public static async Task<Result<T, Exception>> JsonTo<T>(Result<HttpResponseMessage, Exception> result)
     {
         if (result.IsFail) return result.Error!;
 
@@ -86,11 +86,11 @@ public class NetService
         }
     }
     
-    public static async Task<Result<T, Exception>> ResultTo<T>(Task<Result<HttpResponseMessage, Exception>> resultTask)
+    public static async Task<Result<T, Exception>> JsonTo<T>(Task<Result<HttpResponseMessage, Exception>> resultTask)
     {
         try
         {
-            return await ResultTo<T>(await resultTask);
+            return await JsonTo<T>(await resultTask);
         }
         catch (Exception e)
         {
@@ -98,14 +98,14 @@ public class NetService
         } 
     }
 
-    public async Task<Result<TokenDto, Exception>> SingIn(SignInDto dto)
+    public async Task<Result<string, Exception>> SingIn(SignInDto dto)
     {
-        return await ResultTo<TokenDto>(Post("auth/signin", dto));
+        return await JsonTo<string>(Post("auth/signin", dto));
     }
     
-    public async Task<Result<TokenDto, Exception>> CreateOrg(CreateOrganizationDto dto)
+    public async Task<Result<string, Exception>> CreateOrg(CreateOrganizationDto dto)
     {
-        return await ResultTo<TokenDto>(Post("auth/signin", dto));
+        return await JsonTo<string>(Post("auth/signin", dto));
     }
     
     public async Task<Result<string, Exception>> WhoIAm()

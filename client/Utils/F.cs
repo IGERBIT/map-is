@@ -1,4 +1,6 @@
-﻿using System.Runtime.InteropServices;
+﻿using System.Numerics;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using System.Text;
 using ImGuiNET;
 
@@ -34,6 +36,17 @@ public static unsafe class F
     public static void FreeUtf8String(byte* str)
     {
         Marshal.FreeHGlobal(new IntPtr(str));
+    }
+    
+
+    public static float DistanceToSegment(Vector2 a, Vector2 b, Vector2 point)
+    {
+        var lenght2 = Vector2.DistanceSquared(a, b);
+        if (lenght2 == 0) return Vector2.Distance(a, point);
+        
+        var t = Math.Clamp(Vector2.Dot(point - a, b - a) / lenght2, 0f, 1f);
+        var projection = a + t * (b - a);
+        return Vector2.Distance(point, projection);
     }
 
    

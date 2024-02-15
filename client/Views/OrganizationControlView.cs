@@ -14,12 +14,8 @@ public class OrganizationControlView : ImGuiWindow
         var buttonWidth = ImGui.GetContentRegionAvail().X;
 
         if (ImGui.Button("Navigate", new Vector2(buttonWidth, 30))) Windows.Open<NavigationView>();
-        ImGui.Button("Maps Management", new Vector2(buttonWidth, 30));
-        ImGui.Button("Members Management", new Vector2(buttonWidth, 30));
-
-        if (ImGui.Button("Who I Am", new Vector2(buttonWidth, 30))) OnWhoIAm();
-        
-        ImGui.TextUnformatted($"Who: ${_whoiam}");
+        if (ImGui.Button("Schemas", new Vector2(buttonWidth, 30))) Windows.Open<SchemasView>();
+        if (ImGui.Button("Members", new Vector2(buttonWidth, 30))) Windows.Open<MembersView>();
         
         ImGui.End();
     }

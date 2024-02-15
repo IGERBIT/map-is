@@ -18,10 +18,10 @@ public class OrganizationController : ControllerBase
     }
 
     [HttpPost("create")]
-    public async Task<Result<TokenDto, ApiError>> Create([FromBody]CreateOrganizationDto dto)
+    public async Task<Result<string, ApiError>> Create([FromBody]CreateOrganizationDto dto)
     {
 
-        return new TokenDto("", "");
+        return "";
     }
     
 }

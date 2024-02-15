@@ -18,7 +18,7 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("signin")]
-    public async Task<Result<TokenDto, ApiError>> SignIn([FromBody]SignInDto signInDto)
+    public async Task<Result<string, ApiError>> SignIn([FromBody]SignInDto signInDto)
     {
         var identity = await GetIdentity(signInDto.Email, signInDto.Password);
 
@@ -34,7 +34,7 @@ public class AuthController : ControllerBase
             signingCredentials: new SigningCredentials(AuthOptions.GetSymmetricSecurityKey(), SecurityAlgorithms.HmacSha256));
         var encodedJwt = new JwtSecurityTokenHandler().WriteToken(jwt);
 
-        return new TokenDto(encodedJwt, signInDto.Email);
+        return encodedJwt;
     }
     
     

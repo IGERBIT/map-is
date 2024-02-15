@@ -12,6 +12,7 @@
       <PackageReference Include="ClickableTransparentOverlay" Version="9.3.0" />
       <PackageReference Include="ImGui.NET" Version="1.90.1.1" />
       <PackageReference Include="JWT" Version="10.1.1" />
+      <PackageReference Include="NativeFileDialogSharp" Version="0.5.0" />
       <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
       <PackageReference Include="Vortice.Mathematics" Version="1.7.7" />
     </ItemGroup>
@@ -20,10 +21,9 @@
       <None Update="fonts\droid_sans.ttf">
         <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       </None>
-    </ItemGroup>
-
-    <ItemGroup>
-      <Folder Include="Dto\" />
+      <None Update="map.jpg">
+        <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      </None>
     </ItemGroup>
 
     <ItemGroup>

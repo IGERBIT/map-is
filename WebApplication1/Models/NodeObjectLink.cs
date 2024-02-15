@@ -6,15 +6,20 @@ using Microsoft.EntityFrameworkCore;
 namespace WebApplication1.Models;
 
 [PrimaryKey(nameof(Id))]
-public class MapNodeLink
+public class NodeObjectLink
 {
     [Key]
     [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
     public int Id { get; set; }
     
-    public required MapNode NodeA { get; set; }
-    public required MapNode NodeB { get; set; }
-
-    public float WeightFactor { get; set; } = 1f;
+    [Key]
+    public int ObjectId { get; set; }
+    public int NodeId { get; set; }
+    
+    public ObjectInstance Object { get; set; } = null!;
+    public MapNode Node { get; set; } = null!;
+    
+    public int SchemaId { get; set; }
+    public Schema Schema { get; set; } = null!;
 }
 
