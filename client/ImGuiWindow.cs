@@ -15,6 +15,8 @@ public abstract class ImGuiWindow
 
     public T Service<T>() => Windows.Service<T>();
 
+    public void HandleException(Exception e) => Windows.HandleException(e);
+
     public virtual void Init() {}
     
     public abstract void Render();

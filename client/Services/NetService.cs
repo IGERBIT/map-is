@@ -1,11 +1,12 @@
-﻿using System.Net.Http.Headers;
+﻿using System.Diagnostics.CodeAnalysis;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text;
 using client.Utils;
 using MapShared.Dto;
 using Newtonsoft.Json;
 
-namespace client;
+namespace client.Services;
 
 public class NetService
 {
@@ -22,20 +23,14 @@ public class NetService
     {
         _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
     }
-
-    public async Task<Result<HttpResponseMessage, Exception>> Post(string path, object value)
+    
+    public async Task<Result<HttpResponseMessage, Exception>> PostJson([StringSyntax("Uri")] string? requestUri, object value)
     {
         try
         {
             var content = new StringContent(JsonConvert.SerializeObject(value), Encoding.UTF8, "application/json");
-            var response = await _httpClient.PostAsync(path, content);
-            
-            if (!response.IsSuccessStatusCode)
-            {
-                return new HttpException(response.ReasonPhrase, response.StatusCode);
-            }
-            
-            return response;
+            var response = await _httpClient.PostAsync(requestUri, content);
+            return response.EnsureSuccessStatusCode();
         }
         catch (HttpRequestException e)
         {
@@ -43,42 +38,33 @@ public class NetService
         }
     }
     
-    public async Task<Result<HttpResponseMessage, Exception>> Get(string path)
+    public Task<Stream> GetStream([StringSyntax("Uri")] string? requestUri)
+    {
+        return _httpClient.GetStreamAsync(requestUri);
+    }
+    
+    public async Task<Result<HttpResponseMessage, Exception>> Get([StringSyntax("Uri")] string? requestUri)
     {
         try
         {
-            var response = await _httpClient.GetAsync(path);
-
-            if (!response.IsSuccessStatusCode)
-            {
-                return new HttpException(response.ReasonPhrase, response.StatusCode);
-            }
-            
-            return response;
+            var response = await _httpClient.GetAsync(requestUri);
+            return response.EnsureSuccessStatusCode();
         }
         catch (HttpRequestException e)
         {
             return e;
         }
     }
-
-    public static async Task<Result<T, Exception>> JsonTo<T>(Result<HttpResponseMessage, Exception> result)
+    
+    public static async Task<Result<T, Exception>> ReadPureJson<T>(Result<HttpResponseMessage, Exception> result)
     {
-        if (result.IsFail) return result.Error!;
-
-        using var value = result.Value!;
-
         try
         {
-            var serverResponse = await value.Content.ReadFromJsonAsync<Result<T, ApiError>>();
+            if (result.IsFail) throw result.Error;
 
-            if (serverResponse.IsFail)
-            {
-                var error = serverResponse.Error;
-                return new ApiException(error.Code, error.Message);
-            }
+            using var value = result.Value;
 
-            return serverResponse.Value!;
+            return await value.Content.ReadFromJsonAsync<T>() ?? throw new InvalidOperationException();
         }
         catch (Exception e)
         {
@@ -86,11 +72,41 @@ public class NetService
         }
     }
     
-    public static async Task<Result<T, Exception>> JsonTo<T>(Task<Result<HttpResponseMessage, Exception>> resultTask)
+    public static async Task<Result<T, Exception>> ReadPureJson<T>(Task<Result<HttpResponseMessage, Exception>> resultTask)
     {
         try
         {
-            return await JsonTo<T>(await resultTask);
+            return await ReadPureJson<T>(await resultTask);
+        }
+        catch (Exception e)
+        {
+            return e;
+        }
+    }
+    
+    public static async Task<Result<T, Exception>> ReadResultJson<T>(Result<HttpResponseMessage, Exception> result)
+    {
+        try
+        {
+            var serverResponse = await ReadPureJson<Result<T, ApiError>>(result);
+            if (serverResponse.IsFail) return serverResponse.Error;
+
+            var resultValue = serverResponse.Value;
+            if (resultValue.IsFail)  return new ApiException(resultValue.Error.Code, resultValue.Error.Message ?? string.Empty);
+            
+            return resultValue.Value;
+        }
+        catch (Exception e)
+        {
+            return e;
+        }
+    }
+    
+    public static async Task<Result<T, Exception>> ReadResultJson<T>(Task<Result<HttpResponseMessage, Exception>> resultTask)
+    {
+        try
+        {
+            return await ReadResultJson<T>(await resultTask);
         }
         catch (Exception e)
         {
@@ -98,29 +114,64 @@ public class NetService
         } 
     }
 
-    public async Task<Result<string, Exception>> SingIn(SignInDto dto)
+    public async Task<Result<TokenDto, Exception>> SingIn(SignInDto dto)
     {
-        return await JsonTo<string>(Post("auth/signin", dto));
+        return await ReadResultJson<TokenDto>(PostJson("auth/signin", dto));
     }
     
     public async Task<Result<string, Exception>> CreateOrg(CreateOrganizationDto dto)
     {
-        return await JsonTo<string>(Post("auth/signin", dto));
+        return await ReadResultJson<string>(PostJson("org/create", dto));
     }
     
-    public async Task<Result<string, Exception>> WhoIAm()
+    public async Task<Result<string, Exception>> CreateSchema(string schemaName, Stream imageStream)
     {
         try
         {
-            var response = await Get("auth/whoiam");
-            if (response.IsFail) return response.Error;
+            using var multipartFormContent = new MultipartFormDataContent();
+            var streamContent = new StreamContent(imageStream);
+            streamContent.Headers.ContentType = new MediaTypeHeaderValue("image/png");
+            multipartFormContent.Add(streamContent, "file", "map.png");
+            multipartFormContent.Add(new StringContent(schemaName), "schemeName");
+            using var response = await _httpClient.PostAsync("schemas/create", multipartFormContent);
+            response.EnsureSuccessStatusCode();
 
-            return await response.Value!.Content.ReadAsStringAsync();
+            return "Ok";
         }
-        catch (Exception e)
+        catch (HttpRequestException e)
         {
             return e;
         }
+    }
+    
+    public Task<Stream> GetImage(string remotePath)
+    {
+        return GetStream("static/" + remotePath);
+    }
+    
+    public async Task<Result<SchemaLiteDto[], Exception>> GetSchemes()
+    {
+        return await ReadPureJson<SchemaLiteDto[]>(Get("schemas/list"));
+    }
+    
+    public async Task<Result<SchemaDto, Exception>> GetScheme(int id)
+    {
+        return await ReadResultJson<SchemaDto>(Get($"schemas/get/{id}"));
+    }
+    
+    public async Task<Result<bool, Exception>> DeleteScheme(int id)
+    {
+        return (await Get($"schemas/delete/{id}")).IsSuccess;
+    }
+    
+    public async Task<Result<bool, Exception>> SaveScheme(SchemaDto schemaDto)
+    {
+        return (await PostJson("schemas/save", schemaDto)).IsSuccess;
+    }
+    
+    public async Task<Result<bool, Exception>> AddMember(CreateMemberDto memberDto)
+    {
+        return (await PostJson("org/add-member", memberDto)).IsSuccess;
     }
     
     

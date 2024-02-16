@@ -11,7 +11,7 @@ public class Schema
     [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
     public int Id { get; set; }
     public string Name { get; set; } = null!;
-    public string ImageName { get; set; } = null!;
+    public string ImagePath { get; set; } = null!;
     
     public Guid OrganizationId { get; set; }
     public Organization Organization { get; set; } = null!;

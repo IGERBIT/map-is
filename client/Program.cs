@@ -37,6 +37,8 @@ public class Program : Overlay
 
         User32.SetWindowPos(handle, -2, 0, 0, 0, 0, 0x0002 | 0x0001 | 0x0040);
 
+        ReplaceFont("fonts/arialmt.ttf", 12, FontGlyphRangeType.Cyrillic);
+
         return Task.CompletedTask;
     }
 

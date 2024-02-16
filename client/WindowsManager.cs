@@ -1,5 +1,6 @@
 ﻿using System.Reflection;
 using ClickableTransparentOverlay;
+using client.Services;
 using ImGuiNET;
 
 namespace client;
@@ -11,8 +12,8 @@ public class WindowsManager
     public Overlay Overlay { get; }
     public HttpClient HttpClient { get; }
     public Config Config { get; }
-    private object[] _services;
-
+    private readonly object[] _services;
+    
     private bool _firstFrameInit;
     private SynchronizationContext? _original;
     private readonly DelayedSynchronizationContext _current = new DelayedSynchronizationContext();
@@ -72,7 +73,9 @@ public class WindowsManager
                 var window = Windows[i];
 
                 if (window.IsOpen) atLeastOneOpen = true;
+                ImGui.BeginDisabled(State.DisableAmount > 0);
                 window.Render();
+                ImGui.EndDisabled();
                 if (window.IsOpen) atLeastOneOpen = true;
             }
 
@@ -152,9 +155,9 @@ public class WindowsManager
         return true;
     }
     
-    public T? Get<T>() where T : ImGuiWindow
+    public T Get<T>() where T : ImGuiWindow
     {
-        return Windows.OfType<T>().FirstOrDefault();
+        return Windows.OfType<T>().FirstOrDefault()!;
     }
     
 }

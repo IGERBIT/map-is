@@ -11,10 +11,12 @@ namespace WebApplication1.Controllers;
 public class SchemasController : ControllerBase
 {
     private readonly MapContext _mapContext;
+    private readonly IWebHostEnvironment _appEnvironment;
 
-    public SchemasController(MapContext mapContext)
+    public SchemasController(MapContext mapContext, IWebHostEnvironment appEnvironment)
     {
         _mapContext = mapContext;
+        _appEnvironment = appEnvironment;
     }
 
     [Authorize]
@@ -38,12 +40,17 @@ public class SchemasController : ControllerBase
     [HttpGet("get/{id:int}")]
     public async Task<ActionResult<SchemaDto>> Get(int id)
     {
+        if (!F.TryAuth(User.Identity, out var guid)) return Unauthorized();
+
+        var member = await _mapContext.Members.FindAsync(guid);
+        if (member is null) return Unauthorized();
+        
         var schema = await _mapContext.Schemas
             .Include(x => x.Nodes)
             .Include(x => x.Objects)
             .Include(x => x.Links)
             .Include(x => x.ObjectLinks)
-            .FirstOrDefaultAsync(x=>x.Id == id);
+            .FirstOrDefaultAsync(x=>x.Id == id && member.OrganizationId == x.OrganizationId);
 
         if (schema is null) return NotFound();
 
@@ -56,7 +63,7 @@ public class SchemasController : ControllerBase
         {
             Id = schema.Id,
             Name = schema.Name,
-            ImageUrl = schema.ImageName,
+            ImageUrl = schema.ImagePath,
             
             Nodes = nodes,
             Objects = objects,
@@ -66,10 +73,49 @@ public class SchemasController : ControllerBase
     }
     
     [Authorize]
+    [HttpPost("create")]
+    [RequestFormLimits(BufferBody = true)]
+    public async Task<IActionResult> Create([FromForm] string schemeName, [FromForm] IFormFile file)
+    {
+        if (!F.TryAuth(User.Identity, out var guid)) return Unauthorized();
+        
+        if (string.IsNullOrWhiteSpace(schemeName)) return BadRequest();
+
+        var member = await _mapContext.Members.FindAsync(guid);
+        if (member is null) return Unauthorized();
+        
+        var path = $"image_map_{Guid.NewGuid()}.png";
+
+        using (var fileStream = new FileStream(Path.Combine(_appEnvironment.WebRootPath, path), FileMode.OpenOrCreate))
+        {
+            await file.CopyToAsync(fileStream);
+            
+        };
+
+        _mapContext.Schemas.Add(new Schema()
+        {
+            Name = schemeName,
+            ImagePath = path,
+            OrganizationId = member.OrganizationId
+        });
+
+        await _mapContext.SaveChangesAsync();
+
+        return Ok();
+    }
+    
+    [Authorize]
     [HttpGet("delete/{id:int}")]
     public async Task<IActionResult> Delete(int id)
     {
-        var schema = await _mapContext.Schemas.FindAsync(id);
+        if (!F.TryAuth(User.Identity, out var guid)) return Unauthorized();
+
+        var member = await _mapContext.Members.FindAsync(guid);
+        if (member is null) return Unauthorized();
+        
+        if (member.Role != Role.Owner) return BadRequest("You must be an owner to delete schemas");
+
+        var schema = await _mapContext.Schemas.FirstOrDefaultAsync(x => x.Id == id && x.OrganizationId == member.OrganizationId);
         if (schema is null) return NotFound();
 
         _mapContext.Schemas.Remove(schema);
@@ -80,7 +126,7 @@ public class SchemasController : ControllerBase
     }
     
     [Authorize]
-    [HttpPost("save/{id:int}")]
+    [HttpPost("save")]
     public async Task<IActionResult> Save([FromBody]SchemaDto schemaToSave)
     {
         var schema = await _mapContext.Schemas
@@ -94,7 +140,7 @@ public class SchemasController : ControllerBase
 
         if (schemaToSave.ImageUrl is { } url)
         {
-            schema.ImageName = url;
+            schema.ImagePath = url;
         }
         
         if (schemaToSave.Name is { } name)

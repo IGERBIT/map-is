@@ -1,29 +1,29 @@
 ﻿namespace MapShared.Dto;
 
-public struct Result<TValue,TError>
+public struct Result<TValue, TError>
 {
-    public TValue? Value { get; set; }
-    public TError? Error { get; set; }
+    public TValue Value { get; set; }
+    public TError Error { get; set; }
 
     public bool IsSuccess => Error is null;
     public bool IsFail => Error is not null;
 
-    public Result(TValue? value)
+    public Result(TValue value)
     {
         Value = value;
     }
 
-    public Result(TError? error)
+    public Result(TError error)
     {
         Error = error;
     }
 
-    public static implicit operator Result<TValue, TError>(TValue? value)
+    public static implicit operator Result<TValue, TError>(TValue value)
     {
         return new Result<TValue, TError>(value);
     }
     
-    public static implicit operator Result<TValue, TError>(TError? error)
+    public static implicit operator Result<TValue, TError>(TError error)
     {
         return new Result<TValue, TError>(error);
     }
@@ -36,6 +36,11 @@ public static class ResultExtensions
     {
         if (result.IsFail) throw result.Error;
         return result.Value;
+    }
+    
+    public static async Task<T> ValueOrThrow<T, TException>(this Task<Result<T, TException>> resultTask) where TException : Exception
+    {
+        return ValueOrThrow(await resultTask);
     }
 
 }

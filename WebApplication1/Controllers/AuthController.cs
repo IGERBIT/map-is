@@ -4,10 +4,12 @@ using MapShared.Dto;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using WebApplication1.Models;
 
 namespace WebApplication1.Controllers;
 
 [Route("auth")]
+[ApiController]
 public class AuthController : ControllerBase
 {
     private readonly MapContext _mapContext;
@@ -18,11 +20,12 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("signin")]
-    public async Task<Result<string, ApiError>> SignIn([FromBody]SignInDto signInDto)
+    public async Task<Result<TokenDto, ApiError>> SignIn([FromBody]SignInDto signInDto)
     {
-        var identity = await GetIdentity(signInDto.Email, signInDto.Password);
+        var member = await GetMember(signInDto.Email, signInDto.Password);
+        if (member is null)  return ApiError.Undefined("There are no such user");
 
-        if (identity is null)  return ApiError.Undefined("There are no such user");
+        var identity = GetIdentity(member);
         
         var now = DateTime.UtcNow;
         var jwt = new JwtSecurityToken(
@@ -34,35 +37,25 @@ public class AuthController : ControllerBase
             signingCredentials: new SigningCredentials(AuthOptions.GetSymmetricSecurityKey(), SecurityAlgorithms.HmacSha256));
         var encodedJwt = new JwtSecurityTokenHandler().WriteToken(jwt);
 
-        return encodedJwt;
+        return new TokenDto { Token = encodedJwt, IsOwner = member.Role == Role.Owner};
     }
     
     
-    [HttpGet("whoiam")]
-    public IActionResult SignIn()
+    private async Task<Member?> GetMember(string email, string password)
     {
-        if (User.Identity is { IsAuthenticated: true } identity)
-        {
-            return Ok($"guid: {identity.Name}");
-        }
-
-        return Ok("None");
+        var hash = F.HashSHA256(password);
+        return await _mapContext.Members.FirstOrDefaultAsync(x=> x.Email == email && x.Password == hash);
     }
     
-    
-    private async Task<ClaimsIdentity?> GetIdentity(string email, string password)
+    private ClaimsIdentity GetIdentity(Member member)
     {
-        var user = await _mapContext.Members.FirstOrDefaultAsync(x=> x.Email == email);
-        if (user == null) return null;
-        
         var claims = new List<Claim>
         {
-            new Claim(ClaimsIdentity.DefaultNameClaimType, user.Email),
-            new Claim("guid", user.Id.ToString())
+            new Claim(ClaimsIdentity.DefaultNameClaimType, member.Email),
+            new Claim("guid", member.Id.ToString())
         };
         var claimsIdentity = new ClaimsIdentity(claims, "Token", ClaimsIdentity.DefaultNameClaimType, null);
         return claimsIdentity;
-
     }
     
 }

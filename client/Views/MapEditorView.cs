@@ -11,12 +11,28 @@ namespace client.Views;
 
 public class MapEditorView : ImGuiWindow
 {
-    private Image _map;
+    private static readonly uint ObjectFillColor = F.Color(.1f, .1f, 1f, .5f);
+    private static readonly uint ObjectFillColorHovered = F.Color(.1f, .1f, 1f, .75f);
+    private static readonly uint ObjectStrokeColor = F.Color(0f, 0f, 0f);
+    private static readonly float ObjectStrokeThickness = 2;
+    private static readonly float ObjectNamePadding = 40f;
+    
+    private static readonly uint NodeFillColor = F.Color(1f, .1f, 1f, .2f);
+    private static readonly uint NodeFillColorHovered = F.Color(1f, .1f, 1f, .4f);
+    private static readonly float NodeImageRadius = 4f;
+    private static readonly uint NodeStrokeColor = F.Color(1f, .1f, 1f, .5f);
+    private static readonly float NodeStrokeThickness = 1;
+    
+    private static readonly uint LinkCreationColor = F.Color(.4f, 1f, .4f, .5f);
+    private static readonly float LinkThickness = 2;
+    private static readonly uint LinkColor = F.Color(.1f, 1f, .1f, .3f);
+    private static readonly uint LinkColorHovered = F.Color(.1f, 1f, .1f, .5f);
+    private static readonly uint LinkObjectColor = F.Color(.6f, 1f, .1f, .3f);
+    private static readonly uint LinkObjectColorHovered = F.Color(.6f, 1f, .1f, .5f);
+    
     private nint _ptr;
-
     private Size _imageSize;
-
-
+    
     private Rect _winRect;
     private Rect _imgView;
     private Rect _imgRect;
@@ -24,79 +40,17 @@ public class MapEditorView : ImGuiWindow
 
     private Vector2 _image2screen;
 
-    private List<NodeDto> _nodes = new List<NodeDto>();
+    private List<NodeDto> _nodes = new ();
     private List<MapObjectDto> _objects = new();
     private List<LinkDto> _links = new();
     private List<ObjectLinkDto> _objectLinks = new();
 
+    private int _schemeId;
     private int _nextObjectId = -1;
     private int _nextNodeId = -1;
     private int _nextLinkId = -1;
 
-    private int _schemeId;
     
-    
-    public override void Init()
-    {
-        base.Init();
-        
-        _map = Image.Load("map.jpg");
-        _imageSize = new Size(_map.Size.Width, _map.Size.Height);
-        Overlay.AddOrGetImagePointer("map", _map.CloneAs<Rgba32>(), true, out _ptr);
-
-        ImGui.GetIO().ConfigWindowsMoveFromTitleBarOnly = true;
-    }
-
-    private List<Vector2> dots = new List<Vector2>();
-
-    private const float ImageViewPercent = 0.85f;
-
-    public override void Render()
-    {
-        if(!IsOpen) return;
-        if (!ImGui.Begin("Map",  ref IsOpen)) return;
-        
-        var drawList = ImGui.GetWindowDrawList();
-
-            
-        _winRect.Position = drawList.GetClipRectMin();
-        _winRect.Size = new Size(drawList.GetClipRectMax() - _winRect.Position);
-            
-        _imgView = new Rect(_winRect.Position, new Size(_winRect.Width * ImageViewPercent, _winRect.Height));
-        _sideRect = new Rect(_winRect.Position + new Vector2(_imgView.Width, 0),
-            new Size(_winRect.Width * (1f - ImageViewPercent), _winRect.Height));
-            
-
-        ImGui.PushClipRect(_imgView.Position, _imgView.BottomRight, true);
-                
-        RenderImageRect();
-        Editor();
-            
-        ImGui.PopClipRect();
-        ImGui.PushClipRect(_sideRect.Position, _sideRect.BottomRight, true);
-        ImGui.SetCursorScreenPos(_sideRect.Position + new Vector2(5,5));
-        ImGui.BeginGroup();
-        RenderSide();
-        ImGui.EndGroup();
-            
-        ImGui.PopClipRect();
-        ImGui.End();
-    }
-
-    private void RenderSide()
-    {
-        ImGui.Text("Visibility: ");
-        ImGui.NewLine();
-        ImGui.Text("Objects: "); ImGui.SameLine();
-        ImGui.Checkbox("##objects_vis", ref _showObjects);
-        ImGui.Text("Nodes: "); ImGui.SameLine();
-        ImGui.Checkbox("##nodes_vis", ref _showNodes);
-        ImGui.Text("Links: "); ImGui.SameLine();
-        ImGui.Checkbox("##links_vis", ref _showLinks);
-        ImGui.Text("Object Links: "); ImGui.SameLine();
-        ImGui.Checkbox("##olinks_vis", ref _showObjectLinks);
-    }
-
     private object? _contextMenuTarget;
     private object? _entityUnderMouse;
     private Vector2 _mouseScreenPosition;
@@ -130,6 +84,99 @@ public class MapEditorView : ImGuiWindow
     private bool _showNodes = true;
     private bool _showLinks = true;
     private bool _showObjectLinks = true;
+    
+    public override void Init()
+    {
+        base.Init();
+        
+        Setup(-1, Image.Load("map.jpg"), new SchemaDto());
+
+        ImGui.GetIO().ConfigWindowsMoveFromTitleBarOnly = true;
+    }
+    
+    public void Setup(int schemaId, Image image, SchemaDto schemaDto)
+    {
+        _schemeId = schemaId;
+        _imageSize = new Size(image.Size.Width, image.Size.Height);
+        Overlay.RemoveImage("map");
+        Overlay.AddOrGetImagePointer("map", image.CloneAs<Rgba32>(), true, out _ptr);
+
+        _nextObjectId = -1;
+        _nextNodeId = -1;
+        _nextLinkId = -1;
+
+        _zoom = 1;
+        _imageOffset = Vector2.Zero;
+        
+        _nodes = schemaDto.Nodes;
+        _objects = schemaDto.Objects;
+        _links = schemaDto.Links;
+        _objectLinks = schemaDto.ObjectLinks;
+    }
+
+    private List<Vector2> dots = new List<Vector2>();
+
+    private const float ImageViewPercent = 0.85f;
+
+    public override void Render()
+    {
+        if(!IsOpen) return;
+        if (!ImGui.Begin("Map",  ref IsOpen)) return;
+        
+        var drawList = ImGui.GetWindowDrawList();
+        
+        _winRect.Position = drawList.GetClipRectMin();
+        _winRect.Size = new Size(drawList.GetClipRectMax() - _winRect.Position);
+            
+        _imgView = new Rect(_winRect.Position, new Size(_winRect.Width * ImageViewPercent, _winRect.Height));
+        _sideRect = new Rect(_winRect.Position + new Vector2(_imgView.Width, 0),
+            new Size(_winRect.Width * (1f - ImageViewPercent), _winRect.Height));
+            
+
+        ImGui.PushClipRect(_imgView.Position, _imgView.BottomRight, true);
+
+        if (_ptr != IntPtr.Zero)
+        {
+            RenderImageRect();
+            Editor();
+        }
+            
+        ImGui.PopClipRect();
+        ImGui.PushClipRect(_sideRect.Position, _sideRect.BottomRight, true);
+        ImGui.SetCursorScreenPos(_sideRect.Position + new Vector2(5,5));
+        ImGui.BeginGroup();
+        RenderSide();
+        ImGui.EndGroup();
+            
+        ImGui.PopClipRect();
+        ImGui.End();
+    }
+
+    private void RenderSide()
+    {
+        ImGui.Text("Visibility: ");
+        ImGui.NewLine();
+        ImGui.Text("Objects: "); ImGui.SameLine();
+        ImGui.Checkbox("##objects_vis", ref _showObjects);
+        ImGui.Text("Nodes: "); ImGui.SameLine();
+        ImGui.Checkbox("##nodes_vis", ref _showNodes);
+        ImGui.Text("Links: "); ImGui.SameLine();
+        ImGui.Checkbox("##links_vis", ref _showLinks);
+        ImGui.Text("Object Links: "); ImGui.SameLine();
+        ImGui.Checkbox("##olinks_vis", ref _showObjectLinks);
+        
+        ImGui.NewLine();
+        if (ImGui.Button("Save")) OnSave();
+    }
+
+    private async void OnSave()
+    {
+        try
+        {
+            
+        }
+        catch (Exception e) { HandleException(e); }
+    }
 
     private void Editor()
     {
@@ -198,8 +245,6 @@ public class MapEditorView : ImGuiWindow
         
     }
     
-    
-
     private void DragObject()
     {
         if(ImGui.IsMouseDown(ImGuiMouseButton.Middle) || ImGui.IsMouseDown(ImGuiMouseButton.Right)) return;
@@ -508,25 +553,6 @@ public class MapEditorView : ImGuiWindow
         ImGui.EndPopup();
     }
 
-    private static readonly uint ObjectFillColor = F.Color(.1f, .1f, 1f, .5f);
-    private static readonly uint ObjectFillColorHovered = F.Color(.1f, .1f, 1f, .75f);
-    private static readonly uint ObjectStrokeColor = F.Color(0f, 0f, 0f);
-    private static readonly float ObjectStrokeThickness = 2;
-    private static readonly float ObjectNamePadding = 40f;
-    
-    private static readonly uint NodeFillColor = F.Color(1f, .1f, 1f, .2f);
-    private static readonly uint NodeFillColorHovered = F.Color(1f, .1f, 1f, .4f);
-    private static readonly float NodeImageRadius = 4f;
-    private static readonly uint NodeStrokeColor = F.Color(1f, .1f, 1f, .5f);
-    private static readonly float NodeStrokeThickness = 1;
-    
-    private static readonly uint LinkCreationColor = F.Color(.4f, 1f, .4f, .5f);
-    private static readonly float LinkThickness = 2;
-    private static readonly uint LinkColor = F.Color(.1f, 1f, .1f, .3f);
-    private static readonly uint LinkColorHovered = F.Color(.1f, 1f, .1f, .5f);
-    private static readonly uint LinkObjectColor = F.Color(.6f, 1f, .1f, .3f);
-    private static readonly uint LinkObjectColorHovered = F.Color(.6f, 1f, .1f, .5f);
-
     private void Objects()
     {
         var drawList = ImGui.GetWindowDrawList();
@@ -647,5 +673,7 @@ public class MapEditorView : ImGuiWindow
     private Vector2 VectorToScreen(Vector2 v) => v * _image2screen;
     private Vector2 VectorToLocal(Vector2 v) => v / _image2screen;
     private float ScaleToScreen(float value) => _image2screen.Length() * value;
+
+    
 }
 

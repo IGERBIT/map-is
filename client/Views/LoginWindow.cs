@@ -1,4 +1,5 @@
 ﻿using System.Numerics;
+using client.Services;
 using client.Utils;
 using ImGuiNET;
 using MapShared.Dto;
@@ -86,9 +87,47 @@ public class LoginWindow : ImGuiWindow
         
         var buttonWidth = ImGui.GetContentRegionAvail().X;
         if (ImGui.Button("Sing In", new Vector2(buttonWidth, 30))) OnSingInClicked();
+        if (ImGui.BeginPopupContextItem())
+        {
+            if (ImGui.Button("Skip")) Skip();
+            if (ImGui.Button("Skip As User")) SkipUser();
+            if (ImGui.Button("Skip With Delay")) SkipDelay();
+            ImGui.EndPopup();
+        }
         if (ImGui.Button("Create Organization", new Vector2(buttonWidth, 30))) _createOrg = true;
     }
+
+    private void Skip()
+    {
+        ImGui.CloseCurrentPopup();
+        Windows.Open<OrganizationControlView>();
+        State.IsOwner = true;
+        State.Debug = true;
+        IsOpen = false;
+    }
     
+    private void SkipUser()
+    {
+        ImGui.CloseCurrentPopup();
+        Windows.Open<OrganizationControlView>();
+        State.IsOwner = false;
+        State.Debug = true;
+        IsOpen = false;
+    }
+    
+    private async void SkipDelay()
+    {
+        ImGui.CloseCurrentPopup();
+        using var _ = State.BeginDisableScope();
+
+        await Task.Delay(TimeSpan.FromSeconds(3));
+        
+        Windows.Open<OrganizationControlView>();
+        State.IsOwner = true;
+        State.Debug = true;
+        IsOpen = false;
+    }
+
     private void CreateOrganization()
     {
         
@@ -168,12 +207,16 @@ public class LoginWindow : ImGuiWindow
 
     private async void OnSingInClicked()
     {
-        var result = await Service<NetService>()!.SingIn(new SignInDto(_singInEmail, _singInPassword));
+        using var _ = State.BeginDisableScope();
         try
         {
+            var result = await Service<NetService>().SingIn(new SignInDto(_singInEmail, _singInPassword));
             var token = result.ValueOrThrow();
             
-            Service<NetService>().SetToken(token);
+            Service<NetService>().SetToken(token.Token);
+            
+            State.Token = token.Token;
+            State.IsOwner = token.IsOwner;
             
             Windows.Open<OrganizationControlView>();
             IsOpen = false;
@@ -186,8 +229,26 @@ public class LoginWindow : ImGuiWindow
     
     private async void OnSingUpClicked()
     {
-        Windows.Open<OrganizationControlView>();
-        IsOpen = false;
+        using var _ = State.BeginDisableScope();
+        try
+        {
+            var result = await Service<NetService>().CreateOrg(new CreateOrganizationDto(
+                _orgName, 
+                _orgArea, 
+                new ContactsDto(_orgSite, _orgPhone, _orgAddress),
+                new OwnerInfoDto(_ownerFullname, _ownerEmail, _ownerPassword)));
+            
+            result.ValueOrThrow();
+
+            _singInEmail = _ownerEmail;
+            _singInPassword = "";
+
+            _createOrg = false;
+        }
+        catch (ApiException e)
+        {
+            HandleException(e);
+        }
     }
 
    
