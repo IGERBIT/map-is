@@ -16,7 +16,7 @@ public class MapEditorView : ImGuiWindow
     private static readonly uint ObjectFillColorHovered = F.Color(.1f, .1f, 1f, .75f);
     private static readonly uint ObjectStrokeColor = F.Color(0f, 0f, 0f);
     private static readonly float ObjectStrokeThickness = 2;
-    private static readonly float ObjectNamePadding = 40f;
+    private static readonly float ObjectNamePadding = 10f;
     
     private static readonly uint NodeFillColor = F.Color(1f, .1f, 1f, .2f);
     private static readonly uint NodeFillColorHovered = F.Color(1f, .1f, 1f, .4f);
