@@ -1,4 +1,5 @@
-﻿using ImGuiNET;
+﻿using client.Services;
+using ImGuiNET;
 using MapShared.Dto;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
@@ -46,6 +47,7 @@ public class MapEditorView : ImGuiWindow
     private List<ObjectLinkDto> _objectLinks = new();
 
     private int _schemeId;
+    private string _schemeName = "";
     private int _nextObjectId = -1;
     private int _nextNodeId = -1;
     private int _nextLinkId = -1;
@@ -97,9 +99,10 @@ public class MapEditorView : ImGuiWindow
     public void Setup(int schemaId, Image image, SchemaDto schemaDto)
     {
         _schemeId = schemaId;
+        _schemeName = schemaDto.Name!;
         _imageSize = new Size(image.Size.Width, image.Size.Height);
         Overlay.RemoveImage("map");
-        Overlay.AddOrGetImagePointer("map", image.CloneAs<Rgba32>(), true, out _ptr);
+        Overlay.AddOrGetImagePointer("map", image.CloneAs<Rgba32>(), false, out _ptr);
 
         _nextObjectId = -1;
         _nextNodeId = -1;
@@ -112,6 +115,27 @@ public class MapEditorView : ImGuiWindow
         _objects = schemaDto.Objects;
         _links = schemaDto.Links;
         _objectLinks = schemaDto.ObjectLinks;
+    }
+
+    public async void FetchAndOpen(int schemeId)
+    {
+        using var _ = State.BeginDisableScope();
+        try
+        {
+            var schema = await Service<NetService>().GetScheme(schemeId).ValueOrThrow();
+
+            var imageStream = await Service<NetService>().GetImage(schema.ImageUrl!);
+
+            var image = await Image.LoadAsync(imageStream);
+            
+            Windows.Get<MapEditorView>().Setup(schemeId, image, schema);
+            Windows.Open<MapEditorView>();
+
+        }
+        catch (Exception e)
+        {
+            HandleException(e);
+        }
     }
 
     private List<Vector2> dots = new List<Vector2>();
@@ -166,16 +190,72 @@ public class MapEditorView : ImGuiWindow
         ImGui.Checkbox("##olinks_vis", ref _showObjectLinks);
         
         ImGui.NewLine();
+        ImGui.Text("Name: "); ImGui.SameLine();
+        ImGui.InputText("##name", ref _schemeName, 128);
+        
+        ImGui.NewLine();
         if (ImGui.Button("Save")) OnSave();
+        if (ImGui.Button("Reset")) OnReload();
+    }
+
+    private void InvalidateScheme()
+    {
+        _links.RemoveAll(l =>
+        {
+            if (!HasNode(l.NodeAId)) return true;
+            if (!HasNode(l.NodeBId)) return true;
+
+            if (HasCopy(l.NodeBId, l.NodeAId)) return true;
+            
+            return false;
+        });
+
+        bool HasNode(int id) => _nodes.Any(x => x.Id == id);
+        bool HasObject(int id) => _objects.Any(x => x.Id == id);
+        
+        bool HasCopy(int a, int b) => _links.Any(x => x.NodeAId == a && x.NodeBId == b && a < b);
     }
 
     private async void OnSave()
     {
+        using var _ = State.BeginDisableScope();
         try
         {
+            InvalidateScheme();
+            await Service<NetService>().SaveScheme(new SchemaDto()
+            {
+                Id = _schemeId,
+                
+                Nodes = _nodes.ToList(),
+                Objects = _objects.ToList(),
+                Links = _links.ToList(),
+                ObjectLinks = _objectLinks.ToList(),
+                Name = _schemeName
+                
+                
+            }).ValueOrThrow();
             
+            Windows.Get<MapEditorView>().FetchAndOpen(_schemeId);
+
         }
-        catch (Exception e) { HandleException(e); }
+        catch (Exception e)
+        {
+            HandleException(e);
+        }
+    }
+    
+    private async void OnReload()
+    {
+        using var _ = State.BeginDisableScope();
+        try
+        {
+            Windows.Get<MapEditorView>().FetchAndOpen(_schemeId);
+
+        }
+        catch (Exception e)
+        {
+            HandleException(e);
+        }
     }
 
     private void Editor()
@@ -366,7 +446,7 @@ public class MapEditorView : ImGuiWindow
     {
         var wheel = ImGui.GetIO().MouseWheel;
 
-        if (wheel != 0)
+        if (wheel != 0 && _imgView.Contains(_mouseScreenPosition))
         {
             _zoom += wheel * 0.05f;
         }
@@ -392,7 +472,7 @@ public class MapEditorView : ImGuiWindow
 
             if (_contextMenuTarget is MapObjectDto obj)
             {
-                ImGui.InputText("##rename", ref _newObjectName, 64);
+                ImGui.InputText("##rename", ref _newObjectName, 128);
                 if (ImGui.Button("Save"))
                 {
                     obj.Name = _newObjectName;
@@ -518,7 +598,7 @@ public class MapEditorView : ImGuiWindow
             
             ImGui.TextUnformatted("New Object");
             ImGui.TextUnformatted("Name: "); ImGui.SameLine();
-            ImGui.InputText("##_new_objectName",ref _newObjectName, 32);
+            ImGui.InputText("##_new_objectName",ref _newObjectName, 128);
             if (ImGui.Button("Create"))
             {
                 var localPos = PointToLocal(new Vector2(rect.X, rect.Y));

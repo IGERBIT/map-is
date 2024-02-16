@@ -41,9 +41,8 @@ public class SchemasView : ImGuiWindow
                 OnOpenScheme(schema.Id);
             }
             
-            if (ImGui.BeginPopupContextItem())
+            if (State.IsOwner && ImGui.BeginPopupContextItem())
             {
-                ImGui.Text("Id: " + schema.Id);
                 if (ImGui.Button("Edit")) OnSchemeEdit(schema.Id);
                 if (ImGui.Button("Delete")) ImGui.OpenPopup("delete");
                 if (ImGui.BeginPopup("delete"))
@@ -55,27 +54,42 @@ public class SchemasView : ImGuiWindow
             }
             
         }
+
+        if (State.IsOwner)
+        {
+            ImGui.PushStyleColor(ImGuiCol.Button, F.Color(50,170,50));
         
-        ImGui.PushStyleColor(ImGuiCol.Button, F.Color(50,170,50));
+            if (ImGui.Button("Create New##create", new Vector2(buttonWidth, 30)))
+                ImGui.OpenPopup("Create Schema");
+            ImGui.PopStyleColor();
         
-        if (ImGui.Button("Create New##create", new Vector2(buttonWidth, 30)))
-            ImGui.OpenPopup("Create Schema");
-        ImGui.PopStyleColor();
-        
-        CreateSchemeModal();
+            CreateSchemeModal();
+        }
         
         ImGui.End();
     }
 
-    private void OnSchemeDelete(int schemaId)
+    private async void OnSchemeDelete(int schemaId)
     {
-        throw new NotImplementedException();
+        using var _ = State.BeginDisableScope();
+        try
+        {
+            
+            var result = await Service<NetService>().DeleteScheme(schemaId).ValueOrThrow();
+                
+            Fetch();
+                
+        }
+        catch (Exception e)
+        {
+            _createError = e.Message;
+            return;
+        }
     }
 
     private void OnSchemeEdit(int schemaId)
     {
-        Windows.Get<MapEditorView>().Setup(schemaId, Image.Load("map.jpg"), new SchemaDto());
-        Windows.Open<MapEditorView>();
+        Windows.Get<MapEditorView>().FetchAndOpen(schemaId);
     }
 
     private bool _createSchemeModal;
@@ -128,6 +142,7 @@ public class SchemasView : ImGuiWindow
             var result = await Service<NetService>().CreateSchema(_createSchemeName, pngStream).ValueOrThrow();
                 
             ImGui.CloseCurrentPopup();
+            Fetch();
                 
         }
         catch (Exception e)
@@ -137,12 +152,12 @@ public class SchemasView : ImGuiWindow
         }
     }
 
-    private void OnOpenScheme(int schemaId)
+    private async void OnOpenScheme(int schemaId)
     {
-        
+        Windows.Get<MapView>().FetchAndOpen(schemaId);
     }
 
-    private async void Fetch()
+    public async void Fetch()
     {
         using var _ = State.BeginDisableScope();
         try

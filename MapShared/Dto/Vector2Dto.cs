@@ -4,6 +4,8 @@ namespace MapShared.Dto;
 
 public class Vector2Dto
 {
+    public Vector2Dto() { }
+
     public Vector2Dto(float x, float y)
     {
         X = x;

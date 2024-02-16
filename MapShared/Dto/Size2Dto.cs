@@ -4,6 +4,8 @@ namespace MapShared.Dto;
 
 public class SizeDto
 {
+    public SizeDto() {}
+    
     public SizeDto(float width, float height)
     {
         Width = width;

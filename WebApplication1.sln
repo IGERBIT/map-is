@@ -1,6 +1,6 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebApplication1", "WebApplication1\WebApplication1.csproj", "{AC68B302-7AC2-4A21-9746-0DDCD0C93806}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MapServer", "MapServer\MapServer.csproj", "{AC68B302-7AC2-4A21-9746-0DDCD0C93806}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "client", "client\client.csproj", "{62883949-859F-49FB-89BD-12A5E02E0081}"
 EndProject

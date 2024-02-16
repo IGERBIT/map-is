@@ -2,6 +2,8 @@
 
 public class NodeDto
 {
+    public NodeDto() {}
+    
     public NodeDto(int id, Vector2Dto position, int schemaId)
     {
         Id = id;

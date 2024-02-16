@@ -19,7 +19,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJw
         ValidateIssuer = true,
         ValidateIssuerSigningKey = true,
         ValidateAudience = false,
-        ValidateLifetime = true,
+        ValidateLifetime = false,
         
         ValidIssuer = AuthOptions.ISSUER,
         IssuerSigningKey = AuthOptions.GetSymmetricSecurityKey(),

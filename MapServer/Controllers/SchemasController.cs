@@ -49,7 +49,7 @@ public class SchemasController : ControllerBase
             .Include(x => x.Nodes)
             .Include(x => x.Objects)
             .Include(x => x.Links)
-            .Include(x => x.ObjectLinks)
+            .Include(x => x.ObjectLinks).AsSplitQuery()
             .FirstOrDefaultAsync(x=>x.Id == id && member.OrganizationId == x.OrganizationId);
 
         if (schema is null) return NotFound();
@@ -133,7 +133,7 @@ public class SchemasController : ControllerBase
             .Include(x => x.Nodes)
             .Include(x => x.Objects)
             .Include(x => x.Links)
-            .Include(x => x.ObjectLinks)
+            .Include(x => x.ObjectLinks).AsSplitQuery()
             .FirstOrDefaultAsync(x=>x.Id == schemaToSave.Id);
 
         if (schema is null) return NotFound();
@@ -157,38 +157,70 @@ public class SchemasController : ControllerBase
         _mapContext.NodeLinks.RemoveRange(linksToDelete);
         _mapContext.Nodes.RemoveRange(nodesToDelete);
         _mapContext.Objects.RemoveRange(objectsToDelete);
+
+        var nodesToAdd = new List<MapNode>();
+        var objectsToAdd = new List<ObjectInstance>();
         
-        var nodesToAdd = schemaToSave.Nodes.ExceptBy(schema.Nodes.Select(x => x.Id), x => x.Id).Select(x => new MapNode()
+        foreach (var nodeDto in schemaToSave.Nodes)
         {
-            Id = x.Id,
-            X = x.Position.X,
-            Y = x.Position.Y,
-            SchemaId = schema.Id,
-            Schema = schema
-        }).ToList();
-        var objectsToAdd = schemaToSave.Objects.ExceptBy(schema.Objects.Select(x => x.Id), x => x.Id).Select(x => new ObjectInstance()
+            var existNode = schema.Nodes.FirstOrDefault(x => x.Id == nodeDto.Id);
+            if (existNode is not null)
+            {
+                existNode.X = nodeDto.Position.X;
+                existNode.Y = nodeDto.Position.Y;
+            }
+            else
+            {
+                nodesToAdd.Add(new MapNode()
+                {
+                    Id = nodeDto.Id,
+                    X = nodeDto.Position.X,
+                    Y = nodeDto.Position.Y,
+                    SchemaId = schema.Id,
+                    Schema = schema
+                });
+            }
+        }
+        
+        foreach (var objectDto in schemaToSave.Objects)
         {
-            Id = x.Id,
-            Name = x.Name,
-            X = x.Position.X,
-            Y = x.Position.Y,
-            Width = x.Size.Width,
-            Height = x.Size.Height,
-            SchemaId = schema.Id,
-            Schema = schema
-        }).ToList();
+            var existObject = schema.Objects.FirstOrDefault(x => x.Id == objectDto.Id);
+            if (existObject is not null)
+            {
+                existObject.X = objectDto.Position.X;
+                existObject.Y = objectDto.Position.Y;
+                existObject.Width = objectDto.Size.Width;
+                existObject.Height = objectDto.Size.Height;
+                existObject.Name = objectDto.Name;
+            }
+            else
+            {
+                objectsToAdd.Add(new ObjectInstance()
+                {
+                    Id = objectDto.Id,
+                    Name = objectDto.Name,
+                    X = objectDto.Position.X,
+                    Y = objectDto.Position.Y,
+                    Width = objectDto.Size.Width,
+                    Height = objectDto.Size.Height,
+                    SchemaId = schema.Id,
+                    Schema = schema
+                });
+            }
+        }
+        
 
         var allNodes = schema.Nodes.Concat(nodesToAdd);
         var allObjects = schema.Objects.Concat(objectsToAdd);
         
-        var oLinksToAdd = schemaToSave.ObjectLinks.ExceptBy(schema.ObjectLinks.Select(x => x.Id), x => x.Id).Select(x=>  new NodeObjectLink()
+        var oLinksTo_Add = schemaToSave.ObjectLinks.ExceptBy(schema.ObjectLinks.Select(x => x.Id), x => x.Id).Select(x=>  new NodeObjectLink()
         {
             Schema = schema,
             Node = allNodes.First(n=> n.Id == x.NodeId),
             Object = allObjects.First(n=> n.Id == x.ObjectId),
         }).ToList();
         // ReSharper disable PossibleMultipleEnumeration
-        var linksToAdd = schemaToSave.Links.ExceptBy(schema.Links.Select(x => x.Id), x => x.Id).Select( x=> new NodeLink()
+        var linksTo_Add = schemaToSave.Links.ExceptBy(schema.Links.Select(x => x.Id), x => x.Id).Select( x=> new NodeLink()
         {
             Schema = schema,
             NodeA = allNodes.First(n=> n.Id == x.NodeAId),
@@ -196,10 +228,22 @@ public class SchemasController : ControllerBase
         }).ToList();
         // ReSharper restore PossibleMultipleEnumeration
 
+        foreach (var node in nodesToAdd)
+            node.Id = default;
+        
+        foreach (var node in objectsToAdd)
+            node.Id = default;
+        
+        foreach (var node in oLinksTo_Add)
+            node.Id = default;
+        
+        foreach (var node in linksTo_Add)
+            node.Id = default;
+        
         _mapContext.Nodes.AddRange(nodesToAdd);
         _mapContext.Objects.AddRange(objectsToAdd);
-        _mapContext.NodeObjectLinks.AddRange(oLinksToAdd);
-        _mapContext.NodeLinks.AddRange(linksToAdd);
+        _mapContext.NodeObjectLinks.AddRange(oLinksTo_Add);
+        _mapContext.NodeLinks.AddRange(linksTo_Add);
         
         await _mapContext.SaveChangesAsync();
         

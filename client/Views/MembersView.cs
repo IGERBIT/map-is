@@ -1,4 +1,5 @@
 ﻿using System.Numerics;
+using client.Services;
 using ImGuiNET;
 using MapShared.Dto;
 
@@ -7,18 +8,17 @@ namespace client.Views;
 public class MembersView : ImGuiWindow
 {
 
-    private List<MemberDto> _members = new List<MemberDto>()
-    {
-        new MemberDto { Id = Guid.NewGuid(), AssignDate = DateTime.Now, FullName = "A.B", Email = "my@google.com"},
-        new MemberDto { Id = Guid.NewGuid(), AssignDate = DateTime.Now, FullName = "Putin Evgeniy", Email = "hi@ya.com"},
-        new MemberDto { Id = Guid.NewGuid(), AssignDate = DateTime.Now, FullName = "Elon Mask", Email = "my@bing.com"},
-    };
+    private List<MemberDto> _members = new List<MemberDto>();
     
     public override void Render()
     {
         if(!IsOpen) return;
         if (!ImGui.Begin("Members",  ref IsOpen, ImGuiWindowFlags.AlwaysAutoResize | ImGuiWindowFlags.NoResize)) return;
 
+        if (ImGui.Button("Reload")) LoadMembers();
+        
+        if(_fetchError is not null) ImGui.TextUnformatted(_fetchError);
+        
         bool openEdit = false;
         
         if (ImGui.BeginTable("table2", 4, ImGuiTableFlags.Borders | ImGuiTableFlags.SizingFixedFit))
@@ -73,6 +73,23 @@ public class MembersView : ImGuiWindow
         ImGui.End();
     }
 
+    public async void LoadMembers()
+    {
+        using var _ = State.BeginDisableScope();
+        try
+        {
+            _fetchError = null;
+            var members = await Service<NetService>().Members().ValueOrThrow();
+            
+            _members.Clear();
+            _members.AddRange(members);
+        }
+        catch (Exception e)
+        {
+            _fetchError = e.Message;
+        }
+    }
+
     private void EditPopup()
     {
         if (ImGuiF.BeginPopupModal("Member Edit", ref _editVisible, ImGuiWindowFlags.AlwaysAutoResize | ImGuiWindowFlags.NoResize))
@@ -97,7 +114,7 @@ public class MembersView : ImGuiWindow
     
     private void CreatePopup()
     {
-        if (ImGuiF.BeginPopupModal("New Member", ref _editVisible, ImGuiWindowFlags.AlwaysAutoResize | ImGuiWindowFlags.NoResize))
+        if (ImGuiF.BeginPopupModal("New Member", ref _createVisible, ImGuiWindowFlags.AlwaysAutoResize | ImGuiWindowFlags.NoResize))
         {
             ImGui.TextUnformatted("Fullname:");
             ImGui.InputText("##create_name", ref _createFullName, 32);
@@ -118,19 +135,67 @@ public class MembersView : ImGuiWindow
         ImGui.OpenPopup("New Member");
     }
 
-    private void OnEditSave()
+    private async void OnEditSave()
     {
-        throw new NotImplementedException();
+        using var _ = State.BeginDisableScope();
+        if(_editMemberId is null) return;
+        try
+        {
+            _fetchError = null;
+            await Service<NetService>().UpdateMember(_editMemberId.Value, new CreateMemberDto
+            {
+                FullName = _editFullName,
+                Email = _editEmail,
+                Password = _changePassword ? _editNewPassword : null
+            }).ValueOrThrow();
+            
+            _editFullName = "";
+            _editEmail = "";
+            _editNewPassword = "";
+            _changePassword = false;
+
+            _editVisible = false;
+            
+            LoadMembers();
+        }
+        catch (Exception e)
+        {
+            _fetchError = e.Message;
+        }
     }
     
-    private void OnCreateSave()
+    private async void OnCreateSave()
     {
-        throw new NotImplementedException();
+        using var _ = State.BeginDisableScope();
+        try
+        {
+            _fetchError = null;
+            await Service<NetService>().AddMember(new CreateMemberDto
+            {
+                FullName = _createFullName,
+                Email = _createEmail,
+                Password = _createNewPassword
+            }).ValueOrThrow();
+
+            _createFullName = "";
+            _createEmail = "";
+            _createNewPassword = "";
+
+            _createVisible = false;
+            
+            LoadMembers();
+            
+            
+        }
+        catch (Exception e)
+        {
+            _fetchError = e.Message;
+        }
     }
 
     private bool _openEdit;
     private bool _editVisible;
-    private bool _deleteVisible;
+    private bool _createVisible;
     
     private Guid? _editMemberId;
     private string _editFullName = "";
@@ -141,14 +206,23 @@ public class MembersView : ImGuiWindow
     private string _createFullName = "";
     private string _createEmail = "";
     private string _createNewPassword = "";
+    private string? _fetchError;
 
-
-
-    private void OnMemberDelete(Guid memberId)
+    private async void OnMemberDelete(Guid memberId)
     {
-        var member = _members.FirstOrDefault(x => x.Id == memberId);
-        if(member is null) return;
-        ImGui.OpenPopup("member_delete", ImGuiPopupFlags.AnyPopupLevel);
+        using var _ = State.BeginDisableScope();
+        try
+        {
+            _fetchError = null;
+            await Service<NetService>().RemoveMember(memberId).ValueOrThrow();
+            
+            LoadMembers();
+            
+        }
+        catch (Exception e)
+        {
+            _fetchError = e.Message;
+        }
         
     }
 

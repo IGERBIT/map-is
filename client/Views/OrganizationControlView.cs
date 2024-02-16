@@ -13,11 +13,19 @@ public class OrganizationControlView : ImGuiWindow
         
         var buttonWidth = ImGui.GetContentRegionAvail().X;
 
-        if (ImGui.Button("Navigate", new Vector2(buttonWidth, 30))) Windows.Open<NavigationView>();
+        if (ImGui.Button("Schemes", new Vector2(buttonWidth, 30)))
+        {
+            Windows.Open<SchemasView>();
+            Windows.Get<SchemasView>().Fetch();
+        }
         if (State.IsOwner)
         {
-            if (ImGui.Button("Schemas", new Vector2(buttonWidth, 30))) Windows.Open<SchemasView>();
-            if (ImGui.Button("Members", new Vector2(buttonWidth, 30))) Windows.Open<MembersView>();
+            
+            if (ImGui.Button("Members", new Vector2(buttonWidth, 30)))
+            {
+                Windows.Open<MembersView>();
+                Windows.Get<MembersView>().LoadMembers();
+            }
         }
         
         

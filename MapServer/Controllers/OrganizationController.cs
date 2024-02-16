@@ -76,14 +76,14 @@ public class OrganizationController : ControllerBase
     
     [Authorize]
     [HttpGet("members")]
-    public async Task<ActionResult<IEnumerable<MemberDto>>> Create()
+    public async Task<ActionResult<IEnumerable<MemberDto>>> List()
     {
         if (!F.TryAuth(User.Identity, out var guid)) return Unauthorized();
 
         var owner = await _mapContext.Members.FindAsync(guid);
         if (owner is not { Role: Role.Owner }) return Unauthorized();
 
-        return _mapContext.Members.Where(x => x.OrganizationId == owner.OrganizationId).Select(x => new MemberDto
+        return _mapContext.Members.Where(x => x.OrganizationId == owner.OrganizationId && x.Role != Role.Owner).Select(x => new MemberDto
         {
             Id = x.Id,
             FullName = x.FullName,
@@ -94,7 +94,7 @@ public class OrganizationController : ControllerBase
     
     [Authorize]
     [HttpPost("remove-member/{id:Guid}")]
-    public async Task<IActionResult> Remove([FromQuery] Guid id)
+    public async Task<IActionResult> Remove([FromRoute] Guid id)
     {
         if (!F.TryAuth(User.Identity, out var guid)) return Unauthorized();
 
@@ -113,7 +113,7 @@ public class OrganizationController : ControllerBase
     
     [Authorize]
     [HttpPost("update-member/{id:Guid}")]
-    public async Task<IActionResult> Remove([FromQuery] Guid id, [FromBody] CreateMemberDto dto)
+    public async Task<IActionResult> Remove([FromRoute] Guid id, [FromBody] CreateMemberDto dto)
     {
         if (!F.TryAuth(User.Identity, out var guid)) return Unauthorized();
 

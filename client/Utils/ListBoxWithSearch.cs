@@ -15,12 +15,14 @@ public unsafe class ListBoxWithSearch : IDisposable
     private readonly uint maxLength;
     private readonly int _heightInItems;
     private CString _label;
+    private string _persistentLabel;
 
     public int CurrentItem => _itemIndex < _itemsIndexLookup.Count && _itemIndex >= 0 ? _itemsIndexLookup[_itemIndex] : -1;
 
     public ListBoxWithSearch(string persistentLabel, string[] items, uint maxLength, int heightInItems = -1)
     {
         _label = new CString(persistentLabel);
+        _persistentLabel = persistentLabel;
         SetItems(items);
         this.maxLength = maxLength;
         _heightInItems = heightInItems;
@@ -31,7 +33,7 @@ public unsafe class ListBoxWithSearch : IDisposable
         for (var i = 0; i < _itemsUtf8.Length; i++)
             F.FreeUtf8String(_itemsUtf8[i]);
             
-        _items = items ?? throw new ArgumentNullException(nameof(items));
+        _items = (string[])items.Clone() ?? throw new ArgumentNullException(nameof(items));
         _itemsUtf8 = new byte*[_items.Length];
         _filteredItems = new byte*[_items.Length];
         _itemsIndexLookup.Clear();
@@ -64,7 +66,7 @@ public unsafe class ListBoxWithSearch : IDisposable
     public bool Render()
     {
         ImGui.BeginGroup();
-        if (ImGui.InputText("##Search", ref _searchText, maxLength))
+        if (ImGui.InputText("##Search" + _persistentLabel, ref _searchText, maxLength))
             Filter();
 
 

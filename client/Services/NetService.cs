@@ -28,7 +28,7 @@ public class NetService
     {
         try
         {
-            var content = new StringContent(JsonConvert.SerializeObject(value), Encoding.UTF8, "application/json");
+            var content = new StringContent(JsonConvert.SerializeObject(value, Formatting.None), Encoding.UTF8, "application/json");
             var response = await _httpClient.PostAsync(requestUri, content);
             return response.EnsureSuccessStatusCode();
         }
@@ -156,7 +156,7 @@ public class NetService
     
     public async Task<Result<SchemaDto, Exception>> GetScheme(int id)
     {
-        return await ReadResultJson<SchemaDto>(Get($"schemas/get/{id}"));
+        return await ReadPureJson<SchemaDto>(Get($"schemas/get/{id}"));
     }
     
     public async Task<Result<bool, Exception>> DeleteScheme(int id)
@@ -172,6 +172,21 @@ public class NetService
     public async Task<Result<bool, Exception>> AddMember(CreateMemberDto memberDto)
     {
         return (await PostJson("org/add-member", memberDto)).IsSuccess;
+    }
+    
+    public async Task<Result<bool, Exception>> UpdateMember(Guid id, CreateMemberDto memberDto)
+    {
+        return (await PostJson($"org/update-member/{id}", memberDto)).IsSuccess;
+    }
+    
+    public async Task<Result<bool, Exception>> RemoveMember(Guid id)
+    {
+        return (await PostJson($"org/remove-member/{id}", new {})).IsSuccess;
+    }
+    
+    public async Task<Result<MemberDto[], Exception>> Members()
+    {
+        return await ReadPureJson<MemberDto[]>(Get($"org/members"));
     }
     
     

@@ -4,6 +4,8 @@
         <TargetFramework>net7.0</TargetFramework>
         <Nullable>enable</Nullable>
         <ImplicitUsings>enable</ImplicitUsings>
+        <AssemblyName>Server</AssemblyName>
+        <RootNamespace>MapServer</RootNamespace>
     </PropertyGroup>
 
     <ItemGroup>
